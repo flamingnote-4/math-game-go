@@ -1,5 +1,10 @@
 package main
 
+// TODO
+// - 1: wipe ratings
+// - 2: add other operations
+// - optional: clean output
+
 import (
 	"encoding/json"
 	"fmt"
@@ -19,8 +24,12 @@ const (
 var id uint64 = 1
 
 func main() {
-	var userList []domain.User
-	userList = getUsers()
+	userList := getUsers()
+	for _, user := range userList {
+		if user.Id >= id {
+			id = user.Id + 1
+		}
+	}
 	fmt.Println("Вітаємо у грі!")
 
 	for {
@@ -33,9 +42,10 @@ func main() {
 			userList = append(userList, user)
 			sortAndSave(userList)
 		case "2":
-			for _, user := range userList {
-				fmt.Printf("[%v]\tName: %s\tTime: %v\n",
-					user.Id, user.Name, user.TimeSpent)
+			userList = getUsers()
+			for i, user := range userList {
+				fmt.Printf("[%v] Id:%v\tName: %s\tTime: %v\n",
+					i+1, user.Id, user.Name, user.TimeSpent)
 			}
 		case "3":
 			return
@@ -104,34 +114,41 @@ func sortAndSave(users []domain.User) {
 
 	file, err := os.OpenFile("users.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
-		fmt.Printf("sortAndSave -> os.OpenFile: %s", err)
+		fmt.Printf("sortAndSave -> os.OpenFile: %s\n", err)
 		return
 	}
 	defer func(file *os.File) {
 		err = file.Close()
 		if err != nil {
-			fmt.Printf("sortAndSave -> file.Close: %s", err)
+			fmt.Printf("sortAndSave -> file.Close: %s\n", err)
 		}
 	}(file)
 
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(users)
 	if err != nil {
-		fmt.Printf("sortAndSave -> encoder.Encode: %s", err)
+		fmt.Printf("sortAndSave -> encoder.Encode: %s\n", err)
 	}
 }
 
 func getUsers() []domain.User {
 	file, err := os.Open("users.json")
 	if err != nil {
-		fmt.Printf("getUsers -> os.Open: %s", err)
+		if os.IsNotExist(err) {
+			_, err = os.Create("users.json")
+			if err != nil {
+				fmt.Printf("sortAndSave -> os.Create: %s\n", err)
+			}
+			return nil
+		}
+		fmt.Printf("getUsers -> os.Open: %s\n", err)
 		return nil
 	}
 
 	defer func(file *os.File) {
 		err = file.Close()
 		if err != nil {
-			fmt.Printf("sortAndSave -> file.Close: %s", err)
+			fmt.Printf("sortAndSave -> file.Close: %s\n", err)
 		}
 	}(file)
 
@@ -139,7 +156,7 @@ func getUsers() []domain.User {
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&users)
 	if err != nil {
-		fmt.Printf("getUsers -> decoder.Decode: %s", err)
+		// fmt.Printf("getUsers -> decoder.Decode: %s\n", err)
 		return nil
 	}
 
