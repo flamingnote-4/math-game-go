@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math-game/domain"
 	"math/rand"
+	"os"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -17,16 +20,18 @@ var id uint64 = 1
 
 func main() {
 	var userList []domain.User
+	userList = getUsers()
 	fmt.Println("Вітаємо у грі!")
-	menu()
 
 	for {
+		menu()
 		choice := ""
 		fmt.Scan(&choice)
 		switch choice {
 		case "1":
 			user := play()
 			userList = append(userList, user)
+			sortAndSave(userList)
 		case "2":
 			for _, user := range userList {
 				fmt.Printf("[%v]\tName: %s\tTime: %v\n",
@@ -90,4 +95,53 @@ func play() domain.User {
 	id++
 
 	return user
+}
+
+func sortAndSave(users []domain.User) {
+	sort.SliceStable(users, func(i, j int) bool {
+		return users[i].TimeSpent < users[j].TimeSpent
+	})
+
+	file, err := os.OpenFile("users.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		fmt.Printf("sortAndSave -> os.OpenFile: %s", err)
+		return
+	}
+	defer func(file *os.File) {
+		err = file.Close()
+		if err != nil {
+			fmt.Printf("sortAndSave -> file.Close: %s", err)
+		}
+	}(file)
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(users)
+	if err != nil {
+		fmt.Printf("sortAndSave -> encoder.Encode: %s", err)
+	}
+}
+
+func getUsers() []domain.User {
+	file, err := os.Open("users.json")
+	if err != nil {
+		fmt.Printf("getUsers -> os.Open: %s", err)
+		return nil
+	}
+
+	defer func(file *os.File) {
+		err = file.Close()
+		if err != nil {
+			fmt.Printf("sortAndSave -> file.Close: %s", err)
+		}
+	}(file)
+
+	var users []domain.User
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&users)
+	if err != nil {
+		fmt.Printf("getUsers -> decoder.Decode: %s", err)
+		return nil
+	}
+
+	return users
 }
