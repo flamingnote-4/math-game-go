@@ -48,6 +48,8 @@ func main() {
 					i+1, user.Id, user.Name, user.TimeSpent)
 			}
 		case "3":
+			eraseUsers()
+		case "4":
 			return
 		default:
 			fmt.Println("Оберіть опцію 1, 2 або 3.")
@@ -57,8 +59,9 @@ func main() {
 
 func menu() {
 	fmt.Println("1. Почати гру")
-	fmt.Println("2. Рейтинг")
-	fmt.Println("3. Вийти")
+	fmt.Println("2. Переглянути рейтинг")
+	fmt.Println("3. Очистити рейтинг")
+	fmt.Println("4. Вийти")
 }
 
 func play() domain.User {
@@ -70,9 +73,26 @@ func play() domain.User {
 	startTime := time.Now()
 	myPoints := 0
 	for myPoints < totalPoints {
-		x, y := rand.Intn(100), rand.Intn(100)
+		signIndex := rand.Intn(3) + 1
+		var sign string
 
-		fmt.Printf("%v + %v = ", x, y)
+		switch signIndex {
+		case 1:
+			sign = "+"
+		case 2:
+			sign = "-"
+		case 3:
+			sign = "*"
+		}
+
+		var x, y int
+		if sign == "*" {
+			x, y = rand.Intn(10), rand.Intn(10)
+		} else {
+			x, y = rand.Intn(100), rand.Intn(100)
+		}
+
+		fmt.Printf("%v %s %v = ", x, sign, y)
 
 		ans := ""
 		fmt.Scan(&ans)
@@ -82,7 +102,10 @@ func play() domain.User {
 			fmt.Println("Введіть число.")
 			continue
 		}
-		if ansInt == x+y {
+
+		if sign == "+" && ansInt == x+y ||
+			sign == "-" && ansInt == x-y ||
+			ansInt == x*y {
 			myPoints += pointsPerQuestion
 			fmt.Printf("Отримано %v балів. Залишилося набрати %v\n", pointsPerQuestion, totalPoints-myPoints)
 		} else {
@@ -137,7 +160,7 @@ func getUsers() []domain.User {
 		if os.IsNotExist(err) {
 			_, err = os.Create("users.json")
 			if err != nil {
-				fmt.Printf("sortAndSave -> os.Create: %s\n", err)
+				fmt.Printf("getUsers -> os.Create: %s\n", err)
 			}
 			return nil
 		}
@@ -148,7 +171,7 @@ func getUsers() []domain.User {
 	defer func(file *os.File) {
 		err = file.Close()
 		if err != nil {
-			fmt.Printf("sortAndSave -> file.Close: %s\n", err)
+			fmt.Printf("getUsers -> file.Close: %s\n", err)
 		}
 	}(file)
 
@@ -161,4 +184,25 @@ func getUsers() []domain.User {
 	}
 
 	return users
+}
+
+func eraseUsers() {
+	file, err := os.OpenFile("users.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		fmt.Printf("eraseUsers -> os.OpenFile: %s\n", err)
+		return
+	}
+
+	defer func(file *os.File) {
+		err = file.Close()
+		if err != nil {
+			fmt.Printf("eraseUsers -> file.Close: %s\n", err)
+		}
+	}(file)
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(nil)
+	if err != nil {
+		fmt.Printf("eraseUsers -> encoder.Encode: %s\n", err)
+	}
 }
